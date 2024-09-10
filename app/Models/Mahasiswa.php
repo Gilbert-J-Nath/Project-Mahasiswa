@@ -10,10 +10,22 @@ class Mahasiswa extends Model
 {
     use HasFactory;
 
+    protected $table = 'mahasiswa';
+
+    protected $primaryKey = 'nrp';
+
+    // Menentukan kolom yang bisa diisi secara massal
+    protected $fillable = [
+        'nrp',
+        'nama',
+        'email',
+        'photo',
+    ];
+
+    public $timestamps = false;
+
     public function get_all_mahasiswa()
     {
-        return DB::select("
-        SELECT * FROM mahasiswa
-        ");
+        return self::all(); // Menggunakan Eloquent untuk mengambil semua data
     }
 }

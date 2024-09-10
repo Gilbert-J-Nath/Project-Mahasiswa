@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -29,38 +30,47 @@ class AuthController extends Controller
     }
 
     private function login(Request $request)
-    {
-        $credentials = $request->only('username', 'password');
-        $user = DB::table('users')->where('username', $credentials['username'])->first();
+{
+    // Ambil kredensial dari request
+    $credentials = $request->only('username', 'password');
 
-        if ($user && $this->checkPassword($credentials['password'], $user->password)) {
-            Auth::loginUsingId($user->id_user); // Atau rute lainnya
-            return redirect()->intended('/');
-        }
+    // Cari user berdasarkan username menggunakan model User
+    $user = User::where('username', $credentials['username'])->first();
 
-        return redirect()->back()->withErrors(['Invalid username or password']);
+    // Cek apakah user ditemukan dan password cocok
+    if ($user && Auth::attempt(['username' => $credentials['username'], 'password' => $credentials['password']])) {
+        // Login user berdasarkan id_user
+        Auth::loginUsingId($user->id_user);
+
+        // Redirect ke halaman yang diinginkan setelah login berhasil
+        return redirect()->intended('/');
     }
 
-    private function register(Request $request)
-    {
-        // Validasi input
-        $validator = Validator::make($request->all(), [
-            'username' => 'required|unique:users',
-            'password' => 'required|min:6',
-        ]);
+    // Jika login gagal, kembalikan ke halaman sebelumnya dengan error
+    return redirect()->back()->withErrors(['Invalid username or password']);
+}
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
+private function register(Request $request)
+{
+    // Validasi input
+    $validator = Validator::make($request->all(), [
+        'username' => 'required|unique:users',
+        'password' => 'required|min:6',
+    ]);
 
-        // Insert pengguna ke database dengan hashing password
-        DB::table('users')->insert([
-            'username' => $request->input('username'),
-            'password' => $this->hashPassword($request->input('password')),
-        ]);
-
-        return redirect()->route('login')->with('success', 'Registration successful. Please log in.');
+    if ($validator->fails()) {
+        return redirect()->back()->withErrors($validator)->withInput();
     }
+
+    // Membuat user baru menggunakan model User
+    $user = User::create([
+        'username' => $request->input('username'),
+        'password' => $request->input('password'), // Password akan otomatis di-hash berdasarkan konfigurasi di model
+    ]);
+
+    // Redirect setelah registrasi berhasil
+    return redirect()->route('login')->with('success', 'Registration successful. Please log in.');
+}
 
     private function hashPassword($password)
     {
